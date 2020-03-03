@@ -1,0 +1,44 @@
+{
+  "name": "dc-upload-prototype",
+  "version": "1.0.0",
+  "description": "Prototype DoubleClick Studio upload script using Puppeteer",
+  "main": "src/upload.js",
+  "nodemonConfig": {
+    "ignore": [
+      "SomeFile.txt",
+      "SomeDir"
+    ],
+    "verbose": true,
+    "execMap": {
+      "js": "npm run dev"
+    }
+  },
+  "scripts": {
+    "login": "node src/login.js",
+    "upload": "node src/upload.js",
+    "lint": "eslint src"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mirkovw/puppeteer-test.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mirkovw/puppeteer-test/issues"
+  },
+  "homepage": "https://github.com/mirkovw/puppeteer-test#readme",
+  "dependencies": {
+    "config": "^1.28.1",
+    "prompt": "^1.0.0",
+    "puppeteer": "^2.1.1",
+    "morgan": "^1.9.0",
+    "nodemon": "^2.0.2",
+    "tracer": "^0.8.11"
+  },
+  "devDependencies": {
+    "eslint": "^6.8.0",
+    "eslint-config-airbnb-base": "^14.0.0",
+    "eslint-plugin-import": "^2.20.1"
+  }
+}
