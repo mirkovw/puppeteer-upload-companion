@@ -1,5 +1,6 @@
 {
 	"common": {
-		"screensFolder": "./src/screens"
+		"screensFolder": "./src/screens",
+		"userDataDir": "user_data"
 	}
 }

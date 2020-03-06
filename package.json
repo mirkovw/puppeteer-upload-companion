@@ -16,6 +16,7 @@
   "scripts": {
     "login": "node src/login.js",
     "upload": "node src/upload.js",
+    "uploadfile": "node src/upload_file.js",
     "lint": "eslint src"
   },
   "repository": {
@@ -29,12 +30,11 @@
   },
   "homepage": "https://github.com/mirkovw/puppeteer-test#readme",
   "dependencies": {
+    "axios": "^0.19.2",
     "config": "^1.28.1",
-    "prompt": "^1.0.0",
-    "puppeteer": "^2.1.1",
-    "morgan": "^1.9.0",
     "nodemon": "^2.0.2",
-    "tracer": "^0.8.11"
+    "prompt": "^1.0.0",
+    "puppeteer": "^2.1.1"
   },
   "devDependencies": {
     "eslint": "^6.8.0",
