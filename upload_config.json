@@ -1,0 +1,48 @@
+{
+  "campaigns": [
+    {
+      "account": {
+        "name": "Mediamonks",
+        "id": "33345"
+      },
+      "advertiser": {
+        "name": "myrcat",
+        "id": "60089316",
+        "ownerId": "9976157"
+      },
+      "campaign": {
+        "name": "myrcat_march_madness",
+        "id": "60232290"
+      },
+      "creatives": [
+        {
+          "name": "myrcat_march_madness_300x250",
+          "id": "61424506",
+          "entityId": "1012056690",
+          "source": "./files/dcu_test_300x250.zip",
+          "width": "300",
+          "height": "250",
+          "format": "INPAGE"
+        },
+        {
+          "name": "myrcat_march_madness_300x600",
+          "id": "61424509",
+          "entityId": "1012056696",
+          "source": "./files/dcu_test_300x600.zip",
+          "width": "300",
+          "height": "600",
+          "format": "INPAGE"
+        },
+        {
+          "name": "myrcat_march_madness_970x250",
+          "id": "61424512",
+          "entityId": "1012057131",
+          "source": "./files/dcu_test_970x250.zip",
+          "width": "970",
+          "height": "250",
+          "format": "INPAGE"
+        }
+      ]
+    }
+  ]
+}

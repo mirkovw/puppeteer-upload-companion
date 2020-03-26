@@ -5,12 +5,9 @@ const axios = require('axios');
 const fs = require('fs');
 
 // ONLY USE WHEN DEVELOPING IN CHARLES
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
-const getCookie = (cookies, cookieID) => cookies.filter( (cookie) => cookie.name === cookieID);
-
-//const mainPageUrl = 'https://www.google.com/doubleclick/studio/'
-const mainPageUrl = 'https://localhost:65000/doubleclick/studio/';
+// process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+// const mainPageUrl = 'https://localhost:65000/doubleclick/studio/';
+const mainPageUrl = 'https://www.google.com/doubleclick/studio/';
 const uploadScriptUrl = 'upload/rupio';
 
 const zipFilename = './files/dcu_test_300x250.zip';
@@ -98,51 +95,44 @@ const uploadScriptData = {
     }
 };
 
+const getCookie = (cookies, cookieID) => cookies.filter( (cookie) => cookie.name === cookieID);
+
 (async () => {
+    // Set up puppeteer instance
+    const browser = await puppeteer.launch({
+        headless: false,
+        args: ['--start-maximized'],
+        defaultViewport: {
+            width: 1920,
+            height: 1080,
+        },
+        userDataDir: path.resolve(config.get('common.userDataDir')),
+    });
 
-    const allowed = true;
+    const page = await browser.newPage();
+    const navigationPromise = page.waitForNavigation({
+        waitUntil: 'load',
+    });
 
-    // let cookie = {
-    //     name: 'SID',
-    //     value: 'uQftjEb312xRIC_6SimwZAKcOUcZAx8iaFBkqeFsUUwbJqGen9ASO58AvZ5a8iQClG4BqA.'
-    // };
 
-    if (allowed) {
-        const browser = await puppeteer.launch({
-            headless: false,
-            args: ['--start-maximized'],
-            defaultViewport: {
-                width: 1920,
-                height: 1080,
-            },
-            userDataDir: path.resolve(config.get('common.userDataDir')),
-        });
-
-        const page = await browser.newPage();
-        const navigationPromise = page.waitForNavigation({
-            waitUntil: 'load',
-        });
-
-        await page.goto('https://www.google.com/doubleclick/studio/#creative:step=MANAGE_FILES&advertiserId=36525044&creativeId=36529182&ownerId=291343&entityId=106215518');
-        await navigationPromise;
-        const cookies = await page.cookies();
-        const [sidCookie] = getCookie(cookies, 'SID');
-        cookie = sidCookie;
-
-    }
-
-    console.log('Got cookie: '  + cookie.name + '=' + cookie.value)
+    // Get the SID Cookie
+    await page.goto('https://www.google.com/doubleclick/studio/#creative:step=MANAGE_FILES&advertiserId=36525044&creativeId=36529182&ownerId=291343&entityId=106215518');
+    //await page.goto(mainPageUrl);
+    await navigationPromise;
+    const cookies = await page.cookies();
+    const [sidCookie] = getCookie(cookies, 'SID');
+    console.log('Got cookie: '  + sidCookie.name + '=' + sidCookie.value)
 
     // first part, request upload_id
     const reqUploadIDUrl = mainPageUrl + uploadScriptUrl;
     const data = uploadScriptData;
     const params = {
         'headers': {
-            Cookie: cookie.name + '=' + cookie.value,
+            Cookie: sidCookie.name + '=' + sidCookie.value,
         }
     };
     const rupioResultUploadId = await axios.post(reqUploadIDUrl, data, params);
-    console.log(rupioResultUploadId.data)
+    console.log(rupioResultUploadId.data);
 
     const uploadId = rupioResultUploadId.data.sessionStatus.upload_id;
     console.log('received upload id: ' + uploadId);
@@ -150,7 +140,7 @@ const uploadScriptData = {
     // now second part, upload file
     const reqUploadFileUrl = mainPageUrl + uploadScriptUrl + '?upload_id=' + uploadId + '&file_id=000';
     const headers = {
-        Cookie: cookie.name + '=' + cookie.value,
+        Cookie: sidCookie.name + '=' + sidCookie.value,
         'content-type': 'application/octet-stream',
         'Content-Length': zipFilesize,
     };
@@ -158,5 +148,3 @@ const uploadScriptData = {
     const rupioResultPostFile = await axios.post(reqUploadFileUrl, zipData, {headers});
     console.log(rupioResultPostFile.data);
 })();
-
-

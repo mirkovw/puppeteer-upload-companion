@@ -1,6 +1,12 @@
 {
 	"common": {
 		"screensFolder": "./src/screens",
-		"userDataDir": "user_data"
+		"cookiesPath": "./user_data/cookies.json",
+		"uploadConfigPath": "./upload_config.json"
+	},
+	"doubleclick": {
+		"accountName": "Mediamonks",
+		"accountId": "33345",
+		"url": "https://www.google.com/doubleclick/studio/"
 	}
 }
