@@ -1,20 +1,18 @@
-const puppeteer = require('puppeteer');
 const config = require('config');
-const path = require('path');
-const fs = require('fs');
-const { writeCookies, restoreCookies, getUrlParams, getJSON } = require('./utils.js');
+const axios = require('axios');
+const {
+    getUrlParams,
+} = require('./utils.js');
 const log = require('./utils.js').log();
 
-const mainPageUrl = 'https://www.google.com/doubleclick/studio/';
-const advertisersPageUrl = mainPageUrl + '#advertisers:';
-const waitMs = 1000;
+const waitMs = 1000; // TODO:  Optimize speeds. Figure out where we don't need 1000ms wait time because it adds up
 
 const searchForEntity = async (page, searchQuery) => {
     // CSS selectors :
     // for commencing searches
     const qsSearchInput = '#gwt-debug-table-search-input';
     const qsSearchBtn = '#gwt-debug-table-search-button';
-    const qsSearchResult = page.url().indexOf("campaignId") !== -1 ? 'td a[title="' + searchQuery + '" i]' : 'td:first-child a[title="' + searchQuery + '" i]';
+    const qsSearchResult = page.url().indexOf('campaignId') !== -1 ? 'td a[title="' + searchQuery + '" i]' : 'td:first-child a[title="' + searchQuery + '" i]';
 
     // for search results page
     const qsLoadingDone = "div.gwt-ScrollTable div#gwt-debug-modal-spinner div[aria-hidden='true']";
@@ -23,30 +21,30 @@ const searchForEntity = async (page, searchQuery) => {
 
     const searchResults = [];
 
-    log.info("searching selector: " + qsSearchInput);
+    log.info('searching selector: ' + qsSearchInput);
     await page.waitForSelector(qsSearchInput);
 
     const isDisabled = await page.$eval(qsSearchInput, (element) => element.hasAttribute('disabled')); // when there are no entities in a advertiser/campaign, the search bar is disabled
     if (isDisabled) {
-        log.error("SEARCH DISABLED!! NO ENTRIES");
+        log.error('SEARCH DISABLED!! NO ENTRIES');
         return { exists: false };
-    };
+    }
 
-    log.info("clicking selector: " + qsSearchInput);
+    log.info('clicking selector: ' + qsSearchInput);
     await page.click(qsSearchInput);
     await page.waitFor(waitMs);
 
-    log.info("filling selector: " + qsSearchInput);
+    log.info('filling selector: ' + qsSearchInput);
     await page.type(qsSearchInput, searchQuery);
     await page.waitFor(waitMs);
 
-    log.info("clicking selector: " + qsSearchBtn);
+    log.info('clicking selector: ' + qsSearchBtn);
     await page.click(qsSearchBtn);
     await page.waitFor(waitMs);
 
-    log.info("clicking selector: " + qsLoadingDone);
+    log.info('clicking selector: ' + qsLoadingDone);
     await page.waitForSelector(qsLoadingDone);
-    
+
     // get headers from search results table
     const headersArr = await page.evaluate(({ qsHeaders }) => Array.from(document.querySelectorAll(qsHeaders),
         (row) => Array.from(row.querySelectorAll('td'),
@@ -67,19 +65,19 @@ const searchForEntity = async (page, searchQuery) => {
         searchResults.push(newObj);
     });
 
-    log.info("search results parsed, searching through results")
+    log.info('search results parsed, searching through results');
     const searchResultsFilters = searchResults.filter((result) => result.name.toLowerCase() === searchQuery.toLowerCase());
     log.info(searchResultsFilters.length + ' matches found');
 
     if (searchResults.length === 0) {
-        log.info("no results")
+        log.info('no results');
         return { exists: false };
     }
 
-    log.info("searching selector: " + qsSearchResult);
+    log.info('searching selector: ' + qsSearchResult);
     await page.waitForSelector(qsSearchResult);
-    
-    log.info("clicking selector: " + qsSearchResult);
+
+    log.info('clicking selector: ' + qsSearchResult);
     await page.click(qsSearchResult);
     await page.waitFor(waitMs);
 
@@ -102,7 +100,7 @@ exports.createAdvertiser = async (browser, page, advertiserName) => {
     const createAdvertiserUrl = config.get('doubleclick.url') + '#advertiser/new:accountId=' + config.get('doubleclick.accountId') + '&accountName=' + config.get('doubleclick.accountName');
     const qsAdvertiserInput = 'input#gwt-debug-advertiser-advertiserName-input';
     const qsAdvertiserSubmit = 'a#gwt-debug-save-button';
-    const qsAdvertiserLabel = "#gwt-debug-advertiser-pageTitle-label";
+    const qsAdvertiserLabel = '#gwt-debug-advertiser-pageTitle-label';
     const advertiserUrl = 'https://www.google.com/doubleclick/studio/#Advertiser:';
 
     // check if advertiser exists
@@ -110,7 +108,7 @@ exports.createAdvertiser = async (browser, page, advertiserName) => {
     log.info('going to page: ' + createAdvertiserUrl);
     await page.goto(createAdvertiserUrl);
     log.info('page loaded: ' + page.url());
-    
+
     log.info('searching selector: ' + qsAdvertiserInput);
     await page.waitForSelector(qsAdvertiserInput);
 
@@ -121,30 +119,30 @@ exports.createAdvertiser = async (browser, page, advertiserName) => {
     log.info('filling selector: ' + qsAdvertiserInput);
     await page.type(qsAdvertiserInput, advertiserName);
     await page.waitFor(waitMs);
-    
-    console.log("searching selector: " + qsAdvertiserSubmit)
+
+    log.info('searching selector: ' + qsAdvertiserSubmit);
     await page.waitForSelector(qsAdvertiserSubmit);
 
-    log.info("clicking on selector: " + qsAdvertiserSubmit)
+    log.info('clicking on selector: ' + qsAdvertiserSubmit);
     await page.click(qsAdvertiserSubmit);
 
     log.info('searching selector: ' + qsAdvertiserLabel);
     await page.waitForSelector(qsAdvertiserLabel);
-    
+
     // wait until we're at the created advertisers page so we can record the url params
     const newUrl = await waitForUrl(page, advertiserUrl);
     const urlParams = await getUrlParams(page.url());
-    
+
     return { exists: true, url: page.url(), urlParams };
 };
 
 const waitForUrl = async (page, url) => {
-    let promise = new Promise((resolve) => {
+    const promise = new Promise((resolve) => {
         const checkUrl = setInterval(() => {
             log.info('checking: ' + page.url());
             if (page.url().indexOf(url) === 0) {
                 clearInterval(checkUrl);
-                resolve(page.url())
+                resolve(page.url());
             }
         }, 200);
     });
@@ -172,29 +170,29 @@ exports.createCampaign = async (browser, page, advertiser, campaignName) => {
     log.info('going to page: ' + createCampaignUrl);
     await page.goto(createCampaignUrl);
     log.info('page loaded: ' + page.url());
-    
+
     log.info('searching selector: ' + qsCampaignInput);
     await page.waitForSelector(qsCampaignInput);
-    
+
     log.info('clicking selector: ' + qsCampaignInput);
     await page.click(qsCampaignInput);
     await page.waitFor(waitMs);
-    
+
     log.info('filling selector: ' + qsCampaignInput);
     await page.type(qsCampaignInput, campaignName);
     await page.waitFor(waitMs);
 
-    console.log("searching selector: " + qsCampaignSubmit)
+    log.info('searching selector: ' + qsCampaignSubmit);
     await page.waitForSelector(qsCampaignSubmit);
-    
-    log.info("clicking selector: " + qsCampaignSubmit)
+
+    log.info('clicking selector: ' + qsCampaignSubmit);
     await page.click(qsCampaignSubmit);
 
 
     // wait until we're at the created campaign page so we can record the url params
     const newUrl = await waitForUrl(page, campaignUrl);
     const urlParams = await getUrlParams(page.url());
-    
+
     return { exists: true, url: page.url(), urlParams };
 };
 
@@ -219,7 +217,6 @@ exports.createCreative = async (browser, page, advertiser, campaign, creative) =
     const qsCreativeHeightInput = 'input#gwt-debug-creativeDetail-heightText';
 
     const qsCreativeSubmit = 'a#gwt-debug-creativeworkflow-next-button';
-    const qsCreativeLabel = "#gwt-debug-creativeworkflow-pageTitle-label";
 
     const creativeUrl = 'https://www.google.com/doubleclick/studio/#creative:step=MANAGE_FILES';
 
@@ -228,21 +225,21 @@ exports.createCreative = async (browser, page, advertiser, campaign, creative) =
     await page.goto(createCreativeUrl);
     log.info('page loaded: ' + page.url());
     await page.waitFor(1500);
-    
+
     log.info('searching selector: ' + qsCreativeNameInput);
     await page.waitForSelector(qsCreativeNameInput);
 
     log.info('clicking selector: ' + qsCreativeNameInput);
     await page.click(qsCreativeNameInput);
     await page.waitFor(waitMs);
-    
+
     log.info('filling selector: ' + qsCreativeNameInput);
     await page.type(qsCreativeNameInput, creative.name);
     await page.waitFor(waitMs);
 
     log.info('searching selector: ' + qsCreativeFormatDropdown);
     await page.waitForSelector(qsCreativeFormatDropdown);
-    
+
     log.info('clicking selector: ' + qsCreativeFormatDropdown);
     await page.click(qsCreativeFormatDropdown);
     await page.waitFor(waitMs);
@@ -256,43 +253,43 @@ exports.createCreative = async (browser, page, advertiser, campaign, creative) =
 
     log.info('searching selector: ' + qsCreativeSizeDropdown);
     await page.waitForSelector(qsCreativeSizeDropdown);
-    
+
     log.info('clicking selector: ' + qsCreativeSizeDropdown);
     await page.click(qsCreativeSizeDropdown);
     await page.waitFor(waitMs);
 
     log.info('searching selector: ' + qsCreativeSizeValueCustom);
     await page.waitForSelector(qsCreativeSizeValueCustom);
-    
+
     log.info('clicking selector: ' + qsCreativeSizeValueCustom);
     await page.click(qsCreativeSizeValueCustom);
     await page.waitFor(waitMs);
 
     log.info('searching selector: ' + qsCreativeWidthInput);
     await page.waitForSelector(qsCreativeWidthInput);
-    
+
     log.info('clicking selector: ' + qsCreativeWidthInput);
     await page.click(qsCreativeWidthInput);
     await page.waitFor(waitMs);
-    
+
     log.info('filling selector: ' + qsCreativeWidthInput);
     await page.type(qsCreativeWidthInput, creative.width);
     await page.waitFor(waitMs);
 
     log.info('searching selector: ' + qsCreativeHeightInput);
     await page.waitForSelector(qsCreativeHeightInput);
-    
+
     log.info('clicking selector: ' + qsCreativeHeightInput);
     await page.click(qsCreativeHeightInput);
     await page.waitFor(waitMs);
-    
+
     log.info('filling selector: ' + qsCreativeHeightInput);
     await page.type(qsCreativeHeightInput, creative.height);
     await page.waitFor(waitMs);
 
     log.info('searching selector: ' + qsCreativeSubmit);
     await page.waitForSelector(qsCreativeSubmit);
-    
+
     log.info('clicking selector: ' + qsCreativeSubmit);
     await page.click(qsCreativeSubmit);
     // wait until we're at the created campaign page so we can record the url params
@@ -303,4 +300,108 @@ exports.createCreative = async (browser, page, advertiser, campaign, creative) =
     const urlParams = await getUrlParams(page.url());
 
     return { exists: true, url: page.url(), urlParams };
+};
+
+exports.composeUploadJSON = (advertiser, campaign, creative, file) => ({
+    protocolVersion: '0.8',
+    createSessionRequest: {
+        fields: [
+            {
+                external: {
+                    name: 'file',
+                    filename: file.name,
+                    put: {
+
+                    },
+                    size: file.size,
+                },
+            },
+            {
+                inlined: {
+                    name: 'TYPE',
+                    content: 'CREATIVE',
+                    contentType: 'text/plain',
+                },
+            },
+            {
+                inlined: {
+                    name: 'ACCOUNT_ID',
+                    content: config.get('doubleclick.accountId'),
+                    contentType: 'text/plain',
+                },
+            },
+            {
+                inlined: {
+                    name: 'ADVERTISER_ID',
+                    content: advertiser.id,
+                    contentType: 'text/plain',
+                },
+            },
+            {
+                inlined: {
+                    name: 'ADVERTISER_OWNER_ID',
+                    content: advertiser.ownerId,
+                    contentType: 'text/plain',
+                },
+            },
+            {
+                inlined: {
+                    name: 'CREATIVE_ID',
+                    content: creative.id,
+                    contentType: 'text/plain',
+                },
+            },
+            {
+                inlined: {
+                    name: 'CREATIVE_ENTITY_ID',
+                    content: creative.entityId,
+                    contentType: 'text/plain',
+                },
+            },
+            {
+                inlined: {
+                    name: 'CREATIVE_OWNER_ID',
+                    content: advertiser.ownerId,
+                    contentType: 'text/plain',
+                },
+            },
+            {
+                inlined: {
+                    name: 'CREATIVE_FORMAT',
+                    content: creative.format,
+                    contentType: 'text/plain',
+                },
+            },
+        ],
+    },
+});
+
+exports.uploadCreative = async (uploadJSON, sidCookie, file) => {
+    const uploadUrl = config.get('doubleclick.url') + 'upload/rupio';
+
+    // first part, request upload_id
+    const data = uploadJSON;
+    const params = {
+        headers: {
+            Cookie: sidCookie.name + '=' + sidCookie.value,
+        },
+    };
+
+    const rupioResultUploadId = await axios.post(uploadUrl, data, params);
+    const uploadId = rupioResultUploadId.data.sessionStatus.upload_id;
+    log.info('uploading ' + file.name + ', status: ' + rupioResultUploadId.data.sessionStatus.state);
+
+    // now second part, upload file
+    // config.get('doubleclick.uploadUrl');
+
+    const reqUploadFileUrl = uploadUrl + '?upload_id=' + uploadId + '&file_id=000';
+    const headers = {
+        Cookie: sidCookie.name + '=' + sidCookie.value,
+        'content-type': 'application/octet-stream',
+        'Content-Length': file.size,
+    };
+
+    const rupioResultPostFile = await axios.post(reqUploadFileUrl, file.data, { headers });
+    log.info('uploading ' + file.name + ', status: ' + rupioResultPostFile.data.sessionStatus.state);
+    return rupioResultPostFile.data;
 };

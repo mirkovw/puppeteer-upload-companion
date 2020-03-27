@@ -1,8 +1,6 @@
 const puppeteer = require('puppeteer');
 const config = require('config');
-const path = require('path');
-const fs = require('fs');
-const { writeCookies, restoreCookies, getUrlParams } = require('./utils.js');
+const { writeCookies, restoreCookies } = require('./utils.js');
 const log = require('./utils.js').log();
 
 (async () => {

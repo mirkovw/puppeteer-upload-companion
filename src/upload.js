@@ -1,87 +1,98 @@
 const puppeteer = require('puppeteer');
 const config = require('config');
-const path = require('path');
-const fs = require('fs');
-const { writeCookies, restoreCookies, getUrlParams, getJSON } = require('./utils.js');
-const { getAdvertiser, getCampaign, getCreative, createAdvertiser, createCampaign, createCreative, uploadCreative } = require('./doubleclick.js');
+const {
+    restoreCookies, getCookie, getJSON, getFileData, writeUploadConfig,
+} = require('./utils.js');
+const {
+    getAdvertiser, getCampaign, getCreative, createAdvertiser, createCampaign, createCreative, uploadCreative, composeUploadJSON,
+} = require('./doubleclick.js');
 const log = require('./utils.js').log();
 
-
-const writeUploadConfig = async (uploadObj) => {
-    try {
-        await fs.writeFileSync(config.get('common.uploadConfigPath'), JSON.stringify(uploadObj, null, 2));
-        log.info("uploadConfig updated.")
-        return true;
-    } catch (err) {
-        log.error(err);
-    }
-};
+// TODO:        Maybe create some sort of prompt style menu to create initial upload_config.json. Or perhaps it's better to just create the uploadConfig from scratch.
 
 (async () => {
     const browser = await puppeteer.launch({
-        headless: false,
+        headless: true,
     });
 
     const page = await browser.newPage();
-    await restoreCookies(page, config.get('common.cookiesPath'));
-    const navigationPromise = page.waitForNavigation({
-        waitUntil: 'load',
-    });
+    // const navigationPromise = page.waitForNavigation({
+    //     waitUntil: 'load',
+    // });
 
+    // inject previously saved cookies and validate timestamps
+    await restoreCookies(page, config.get('common.cookiesPath'));
     const cookies = await page.cookies(config.get('doubleclick.url'));
-    // TODO:    validate if cookies datestamp is still current. Probably only have to check SID cookie
+    const expiredCookies = cookies.filter((cookie) => cookie.expires < Math.floor(new Date() / 1000));
+    log.info(expiredCookies.length === 0 ? 'Cookies checked, all good to go' : 'Some of the required cookies have expired, please log in again with \'npm run login\': ' + expiredCookies);
 
     const uploadConfig = await getJSON(config.get('common.uploadConfigPath'));
+    const configIncomplete = true; // true when ID's are missing from uploadConfig. 
     // TODO:    validate upload config.
     //          validate the entries already there
     //          if ID's are already in there, that means the entities already exist, so can probably skip straight to upload
+    //          set configIncomplete based on whether ID's are missing or not
 
-
+    // get ID's (advertiserId, campaignId, creativeId, etc), or create new entities, for all entities and save these to uploadConfig for future reference
     /* eslint-disable no-await-in-loop */
     // because why not?
-    for (let q = 0; q < uploadConfig.campaigns.length; q += 1) {
-        const upload = uploadConfig.campaigns[q];
 
-        // check if advertiser exists
-        let advertiser = await getAdvertiser(page, upload.advertiser.name);
-        if (!advertiser.exists) advertiser = await createAdvertiser(browser, page, upload.advertiser.name);
-        log.info(advertiser);
+    if (configIncomplete) {
+        for (let q = 0; q < uploadConfig.campaigns.length; q += 1) {
+            const data = uploadConfig.campaigns[q];
 
-        // check if campaign exists
-        let campaign = await getCampaign(page, advertiser, upload.campaign.name);
-        if (!campaign.exists) campaign = await createCampaign(browser, page, advertiser, upload.campaign.name)
-        log.info(campaign);
+            // check if advertiser exists
+            let advertiser = await getAdvertiser(page, data.advertiser.name);
+            if (!advertiser.exists) advertiser = await createAdvertiser(browser, page, data.advertiser.name);
+            log.info(advertiser);
 
-        // write new values
-        uploadConfig.campaigns[q].advertiser.id = advertiser.urlParams.advertiserId;
-        uploadConfig.campaigns[q].advertiser.ownerId = advertiser.urlParams.ownerId;
-        uploadConfig.campaigns[q].campaign.id = campaign.urlParams.campaignId;
-        await writeUploadConfig(uploadConfig);
-
-        // check if creative exists
-        for (let i = 0; i < upload.creatives.length; i += 1) {
-            let creative = await getCreative(page, campaign, upload.creatives[i].name);
-
-            if (!creative.exists) {
-                log.info(upload.creatives[i].name + " doesn't exist. creating new one")
-                creative = await createCreative(browser, page, advertiser, campaign, upload.creatives[i]);
-            } else {
-                log.info(upload.creatives[i].name + "exists. details: ");
-            }
-            log.info(creative);
+            // check if campaign exists
+            let campaign = await getCampaign(page, advertiser, data.campaign.name);
+            if (!campaign.exists) campaign = await createCampaign(browser, page, advertiser, data.campaign.name);
+            log.info(campaign);
 
             // write new values
-            uploadConfig.campaigns[q].creatives[i].id = creative.urlParams.creativeId;
-            uploadConfig.campaigns[q].creatives[i].entityId = creative.urlParams.entityId;
+            uploadConfig.campaigns[q].advertiser.id = advertiser.urlParams.advertiserId;
+            uploadConfig.campaigns[q].advertiser.ownerId = advertiser.urlParams.ownerId;
+            uploadConfig.campaigns[q].campaign.id = campaign.urlParams.campaignId;
             await writeUploadConfig(uploadConfig);
+
+            // check if creative exists
+            for (let i = 0; i < data.creatives.length; i += 1) {
+                let creative = await getCreative(page, campaign, data.creatives[i].name);
+                if (!creative.exists) creative = await createCreative(browser, page, advertiser, campaign, data.creatives[i]);
+                log.info(creative);
+
+                // write new values
+                uploadConfig.campaigns[q].creatives[i].id = creative.urlParams.creativeId;
+                uploadConfig.campaigns[q].creatives[i].entityId = creative.urlParams.entityId;
+                await writeUploadConfig(uploadConfig);
+            }
         }
     }
 
-    
-    //TODO      upload all creatives. use upload_file.js for reference
+    // upload all creatives
+    for (let q = 0; q < uploadConfig.campaigns.length; q += 1) {
+        const batch = uploadConfig.campaigns[q];
+        log.info('starting upload of ' + batch.advertiser.name + ':' + batch.campaign.name + ' with ' + batch.creatives.length + ' creatives.');
 
-    
+        // check if creative exists
+        for (let i = 0; i < batch.creatives.length; i += 1) {
+            const file = getFileData(batch.creatives[i].source);
+            const [sidCookie] = getCookie(cookies, 'SID');
 
+            // log.info('uploading ' + file.name);
 
-    // await browser.close();
+            const uploadJSON = composeUploadJSON(
+                batch.advertiser,
+                batch.campaign,
+                batch.creatives[i],
+                file,
+            );
+
+            await uploadCreative(uploadJSON, sidCookie, file);
+        }
+    }
+
+    await browser.close();
 })();
