@@ -1,9 +1,13 @@
 const puppeteer = require('puppeteer');
-const config = require('config');
-const { writeCookies, restoreCookies } = require('./utils.js');
+//const config = require('config');
+const { getJSON, writeCookies, restoreCookies } = require('./utils.js');
 const log = require('./utils.js').log();
 
+//const configMirko = require('./upload_config.json');
+
 (async () => {
+    const uploadConfig = await getJSON('./upload_config.json');
+
     const browser = await puppeteer.launch({
         headless: false,
         defaultViewport: {
@@ -19,7 +23,10 @@ const log = require('./utils.js').log();
     });
 
     // load cookies if they're available
-    await restoreCookies(page, config.get('common.cookiesPath'));
+    //await restoreCookies(page, config.get('common.cookiesPath'));
+    await restoreCookies(page, uploadConfig.common.cookiesPath);
+
+
 
     await page.goto('https://accounts.google.com/');
     await navigationPromise;
@@ -37,7 +44,7 @@ const log = require('./utils.js').log();
 
     log.info("Successfully logged in. You can now run 'npm run upload'");
 
-    await writeCookies(page, config.get('common.cookiesPath'));
+    await writeCookies(page, uploadConfig.common.cookiesPath);
 
     return browser.close();
 })();

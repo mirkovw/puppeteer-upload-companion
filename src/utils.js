@@ -1,9 +1,9 @@
 const tracer = require('tracer');
 const fs = require('fs');
 const path = require('path');
-const config = require('config');
+//const config = require('config');
 
-exports.log = () => tracer.colorConsole();
+exports.log = () => tracer.colorConsole({ level: 'info' });
 
 exports.writeCookies = async (page, cookiesPath) => {
     const dir = path.dirname(config.get('common.cookiesPath'));
@@ -51,7 +51,8 @@ exports.getUrlParams = (url) => {
 
 exports.writeUploadConfig = async (uploadObj) => {
     try {
-        await fs.writeFileSync(config.get('common.uploadConfigPath'), JSON.stringify(uploadObj, null, 2));
+        //await fs.writeFileSync(config.get('common.uploadConfigPath'), JSON.stringify(uploadObj, null, 2));
+        await fs.writeFileSync('./upload_config.json', JSON.stringify(uploadObj, null, 2));
         // log.info('uploadConfig updated.');
         return true;
     } catch (err) {

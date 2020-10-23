@@ -1,7 +1,7 @@
-const config = require('config');
+// const config = require('config');
 const axios = require('axios');
 const {
-    getUrlParams,
+    getUrlParams, getJSON
 } = require('./utils.js');
 const log = require('./utils.js').log();
 
@@ -21,28 +21,28 @@ const searchForEntity = async (page, searchQuery) => {
 
     const searchResults = [];
 
-    log.info('searching selector: ' + qsSearchInput);
+    log.debug('searching selector: ' + qsSearchInput);
     await page.waitForSelector(qsSearchInput);
 
     const isDisabled = await page.$eval(qsSearchInput, (element) => element.hasAttribute('disabled')); // when there are no entities in a advertiser/campaign, the search bar is disabled
     if (isDisabled) {
-        log.error('SEARCH DISABLED!! NO ENTRIES');
+        log.debug('Search is disabled, so there are no search results.');
         return { exists: false };
     }
 
-    log.info('clicking selector: ' + qsSearchInput);
+    log.debug('clicking selector: ' + qsSearchInput);
     await page.click(qsSearchInput);
     await page.waitFor(waitMs);
 
-    log.info('filling selector: ' + qsSearchInput);
+    log.debug('filling selector: ' + qsSearchInput);
     await page.type(qsSearchInput, searchQuery);
     await page.waitFor(waitMs);
 
-    log.info('clicking selector: ' + qsSearchBtn);
+    log.debug('clicking selector: ' + qsSearchBtn);
     await page.click(qsSearchBtn);
     await page.waitFor(waitMs);
 
-    log.info('clicking selector: ' + qsLoadingDone);
+    log.debug('clicking selector: ' + qsLoadingDone);
     await page.waitForSelector(qsLoadingDone);
 
     // get headers from search results table
@@ -65,19 +65,19 @@ const searchForEntity = async (page, searchQuery) => {
         searchResults.push(newObj);
     });
 
-    log.info('search results parsed, searching through results');
+    log.debug('search results parsed, searching through results');
     const searchResultsFilters = searchResults.filter((result) => result.name.toLowerCase() === searchQuery.toLowerCase());
     log.info(searchResultsFilters.length + ' matches found');
 
     if (searchResults.length === 0) {
-        log.info('no results');
+        log.debug('no results');
         return { exists: false };
     }
 
-    log.info('searching selector: ' + qsSearchResult);
+    log.debug('searching selector: ' + qsSearchResult);
     await page.waitForSelector(qsSearchResult);
 
-    log.info('clicking selector: ' + qsSearchResult);
+    log.debug('clicking selector: ' + qsSearchResult);
     await page.click(qsSearchResult);
     await page.waitFor(waitMs);
 
@@ -87,17 +87,22 @@ const searchForEntity = async (page, searchQuery) => {
 
 
 exports.getAdvertiser = async (page, advertiserName) => {
-    const advertisersPageUrl = config.get('doubleclick.url') + '#advertisers:';
+    const uploadConfig = await getJSON('./upload_config.json');
+    const advertisersPageUrl = uploadConfig.doubleclick.url + '#advertisers:';
     // check if advertiser exists
     log.info('checking if advertiser exists: ' + advertiserName);
-    log.info('going to page: ' + advertisersPageUrl);
+    log.debug('going to page: ' + advertisersPageUrl);
     await page.goto(advertisersPageUrl);
-    log.info('page loaded: ' + page.url());
+    log.debug('page loaded: ' + page.url());
     return searchForEntity(page, advertiserName);
 };
 
 exports.createAdvertiser = async (browser, page, advertiserName) => {
-    const createAdvertiserUrl = config.get('doubleclick.url') + '#advertiser/new:accountId=' + config.get('doubleclick.accountId') + '&accountName=' + config.get('doubleclick.accountName');
+    const uploadConfig = await getJSON('./upload_config.json');
+    //const createAdvertiserUrl = config.get('doubleclick.url') + '#advertiser/new:accountId=' + config.get('doubleclick.accountId') + '&accountName=' + config.get('doubleclick.accountName');
+    const createAdvertiserUrl = uploadConfig.doubleclick.url + '#advertiser/new:accountId=' + uploadConfig.doubleclick.accountId + '&accountName=' + uploadConfig.doubleclick.accountName;
+
+
     const qsAdvertiserInput = 'input#gwt-debug-advertiser-advertiserName-input';
     const qsAdvertiserSubmit = 'a#gwt-debug-save-button';
     const qsAdvertiserLabel = '#gwt-debug-advertiser-pageTitle-label';
@@ -105,28 +110,28 @@ exports.createAdvertiser = async (browser, page, advertiserName) => {
 
     // check if advertiser exists
     log.info('creating new advertiser: ' + advertiserName);
-    log.info('going to page: ' + createAdvertiserUrl);
+    log.debug('going to page: ' + createAdvertiserUrl);
     await page.goto(createAdvertiserUrl);
-    log.info('page loaded: ' + page.url());
+    log.debug('page loaded: ' + page.url());
 
-    log.info('searching selector: ' + qsAdvertiserInput);
+    log.debug('searching selector: ' + qsAdvertiserInput);
     await page.waitForSelector(qsAdvertiserInput);
 
-    log.info('clicking selector: ' + qsAdvertiserInput);
+    log.debug('clicking selector: ' + qsAdvertiserInput);
     await page.click(qsAdvertiserInput);
     await page.waitFor(waitMs);
 
-    log.info('filling selector: ' + qsAdvertiserInput);
+    log.debug('filling selector: ' + qsAdvertiserInput);
     await page.type(qsAdvertiserInput, advertiserName);
     await page.waitFor(waitMs);
 
-    log.info('searching selector: ' + qsAdvertiserSubmit);
+    log.debug('searching selector: ' + qsAdvertiserSubmit);
     await page.waitForSelector(qsAdvertiserSubmit);
 
-    log.info('clicking on selector: ' + qsAdvertiserSubmit);
+    log.debug('clicking on selector: ' + qsAdvertiserSubmit);
     await page.click(qsAdvertiserSubmit);
 
-    log.info('searching selector: ' + qsAdvertiserLabel);
+    log.debug('searching selector: ' + qsAdvertiserLabel);
     await page.waitForSelector(qsAdvertiserLabel);
 
     // wait until we're at the created advertisers page so we can record the url params
@@ -139,7 +144,7 @@ exports.createAdvertiser = async (browser, page, advertiserName) => {
 const waitForUrl = async (page, url) => {
     const promise = new Promise((resolve) => {
         const checkUrl = setInterval(() => {
-            log.info('checking: ' + page.url());
+            log.debug('checking: ' + page.url());
             if (page.url().indexOf(url) === 0) {
                 clearInterval(checkUrl);
                 resolve(page.url());
@@ -152,14 +157,15 @@ const waitForUrl = async (page, url) => {
 
 exports.getCampaign = async (page, advertiser, campaignName) => {
     log.info('checking if campaign exists: ' + campaignName);
-    log.info('going to page: ' + advertiser.url);
+    log.debug('going to page: ' + advertiser.url);
     await page.goto(advertiser.url);
-    log.info('page loaded: ' + page.url());
+    log.debug('page loaded: ' + page.url());
     return searchForEntity(page, campaignName);
 };
 
 exports.createCampaign = async (browser, page, advertiser, campaignName) => {
-    const createCampaignUrl = config.get('doubleclick.url') + '#campaign/new:advertiserId=' + advertiser.urlParams.advertiserId;
+    const uploadConfig = await getJSON('./upload_config.json');
+    const createCampaignUrl = uploadConfig. doubleclick.url + '#campaign/new:advertiserId=' + advertiser.urlParams.advertiserId;
     const qsCampaignInput = 'input#gwt-debug-new-campaign-campaignText';
     const qsCampaignSubmit = 'a#gwt-debug-save-button';
     const qsCampaignLabel = 'gwt-debug-campaign-pageTitle-label';
@@ -167,25 +173,25 @@ exports.createCampaign = async (browser, page, advertiser, campaignName) => {
 
     // check if advertiser exists
     log.info('creating new campaign: ' + campaignName);
-    log.info('going to page: ' + createCampaignUrl);
+    log.debug('going to page: ' + createCampaignUrl);
     await page.goto(createCampaignUrl);
-    log.info('page loaded: ' + page.url());
+    log.debug('page loaded: ' + page.url());
 
-    log.info('searching selector: ' + qsCampaignInput);
+    log.debug('searching selector: ' + qsCampaignInput);
     await page.waitForSelector(qsCampaignInput);
 
-    log.info('clicking selector: ' + qsCampaignInput);
+    log.debug('clicking selector: ' + qsCampaignInput);
     await page.click(qsCampaignInput);
     await page.waitFor(waitMs);
 
-    log.info('filling selector: ' + qsCampaignInput);
+    log.debug('filling selector: ' + qsCampaignInput);
     await page.type(qsCampaignInput, campaignName);
     await page.waitFor(waitMs);
 
-    log.info('searching selector: ' + qsCampaignSubmit);
+    log.debug('searching selector: ' + qsCampaignSubmit);
     await page.waitForSelector(qsCampaignSubmit);
 
-    log.info('clicking selector: ' + qsCampaignSubmit);
+    log.debug('clicking selector: ' + qsCampaignSubmit);
     await page.click(qsCampaignSubmit);
 
 
@@ -198,15 +204,16 @@ exports.createCampaign = async (browser, page, advertiser, campaignName) => {
 
 exports.getCreative = async (page, campaign, creativeName) => {
     log.info('checking if creative exists: ' + creativeName);
-    log.info('going to page: ' + campaign.url);
+    log.debug('going to page: ' + campaign.url);
     await page.goto(campaign.url);
-    log.info('page loaded: ' + page.url());
+    log.debug('page loaded: ' + page.url());
     await page.waitFor(3000);
     return searchForEntity(page, creativeName);
 };
 
 exports.createCreative = async (browser, page, advertiser, campaign, creative) => {
-    const createCreativeUrl = config.get('doubleclick.url') + '#creative/new:campaignId=' + campaign.urlParams.campaignId + '&advertiserId=' + advertiser.urlParams.advertiserId;
+    const uploadConfig = await getJSON('./upload_config.json');
+    const createCreativeUrl = uploadConfig.doubleclick.url + '#creative/new:campaignId=' + campaign.urlParams.campaignId + '&advertiserId=' + advertiser.urlParams.advertiserId;
     const qsCreativeNameInput = 'input#gwt-debug-creativeDetail-nameText';
     const qsCreativeFormatDropdown = 'div#gwt-debug-creativeDetail-formatText';
     const qsCreativeFormatValue = '#gwt-debug-creativeDetail-formatText-' + creative.format;
@@ -221,76 +228,76 @@ exports.createCreative = async (browser, page, advertiser, campaign, creative) =
     const creativeUrl = 'https://www.google.com/doubleclick/studio/#creative:step=MANAGE_FILES';
 
     log.info('creating new creative: ' + creative.name);
-    log.info('going to page: ' + createCreativeUrl);
+    log.debug('going to page: ' + createCreativeUrl);
     await page.goto(createCreativeUrl);
-    log.info('page loaded: ' + page.url());
+    log.debug('page loaded: ' + page.url());
     await page.waitFor(1500);
 
-    log.info('searching selector: ' + qsCreativeNameInput);
+    log.debug('searching selector: ' + qsCreativeNameInput);
     await page.waitForSelector(qsCreativeNameInput);
 
-    log.info('clicking selector: ' + qsCreativeNameInput);
+    log.debug('clicking selector: ' + qsCreativeNameInput);
     await page.click(qsCreativeNameInput);
     await page.waitFor(waitMs);
 
-    log.info('filling selector: ' + qsCreativeNameInput);
+    log.debug('filling selector: ' + qsCreativeNameInput);
     await page.type(qsCreativeNameInput, creative.name);
     await page.waitFor(waitMs);
 
-    log.info('searching selector: ' + qsCreativeFormatDropdown);
+    log.debug('searching selector: ' + qsCreativeFormatDropdown);
     await page.waitForSelector(qsCreativeFormatDropdown);
 
-    log.info('clicking selector: ' + qsCreativeFormatDropdown);
+    log.debug('clicking selector: ' + qsCreativeFormatDropdown);
     await page.click(qsCreativeFormatDropdown);
     await page.waitFor(waitMs);
 
-    log.info('searching selector: ' + qsCreativeFormatValue);
+    log.debug('searching selector: ' + qsCreativeFormatValue);
     await page.waitForSelector(qsCreativeFormatValue);
 
-    log.info('clicking selector: ' + qsCreativeFormatValue);
+    log.debug('clicking selector: ' + qsCreativeFormatValue);
     await page.click(qsCreativeFormatValue);
     await page.waitFor(waitMs);
 
-    log.info('searching selector: ' + qsCreativeSizeDropdown);
+    log.debug('searching selector: ' + qsCreativeSizeDropdown);
     await page.waitForSelector(qsCreativeSizeDropdown);
 
-    log.info('clicking selector: ' + qsCreativeSizeDropdown);
+    log.debug('clicking selector: ' + qsCreativeSizeDropdown);
     await page.click(qsCreativeSizeDropdown);
     await page.waitFor(waitMs);
 
-    log.info('searching selector: ' + qsCreativeSizeValueCustom);
+    log.debug('searching selector: ' + qsCreativeSizeValueCustom);
     await page.waitForSelector(qsCreativeSizeValueCustom);
 
-    log.info('clicking selector: ' + qsCreativeSizeValueCustom);
+    log.debug('clicking selector: ' + qsCreativeSizeValueCustom);
     await page.click(qsCreativeSizeValueCustom);
     await page.waitFor(waitMs);
 
-    log.info('searching selector: ' + qsCreativeWidthInput);
+    log.debug('searching selector: ' + qsCreativeWidthInput);
     await page.waitForSelector(qsCreativeWidthInput);
 
-    log.info('clicking selector: ' + qsCreativeWidthInput);
+    log.debug('clicking selector: ' + qsCreativeWidthInput);
     await page.click(qsCreativeWidthInput);
     await page.waitFor(waitMs);
 
-    log.info('filling selector: ' + qsCreativeWidthInput);
+    log.debug('filling selector: ' + qsCreativeWidthInput);
     await page.type(qsCreativeWidthInput, creative.width);
     await page.waitFor(waitMs);
 
-    log.info('searching selector: ' + qsCreativeHeightInput);
+    log.debug('searching selector: ' + qsCreativeHeightInput);
     await page.waitForSelector(qsCreativeHeightInput);
 
-    log.info('clicking selector: ' + qsCreativeHeightInput);
+    log.debug('clicking selector: ' + qsCreativeHeightInput);
     await page.click(qsCreativeHeightInput);
     await page.waitFor(waitMs);
 
-    log.info('filling selector: ' + qsCreativeHeightInput);
+    log.debug('filling selector: ' + qsCreativeHeightInput);
     await page.type(qsCreativeHeightInput, creative.height);
     await page.waitFor(waitMs);
 
-    log.info('searching selector: ' + qsCreativeSubmit);
+    log.debug('searching selector: ' + qsCreativeSubmit);
     await page.waitForSelector(qsCreativeSubmit);
 
-    log.info('clicking selector: ' + qsCreativeSubmit);
+    log.debug('clicking selector: ' + qsCreativeSubmit);
     await page.click(qsCreativeSubmit);
     // wait until we're at the created campaign page so we can record the url params
 
@@ -302,7 +309,7 @@ exports.createCreative = async (browser, page, advertiser, campaign, creative) =
     return { exists: true, url: page.url(), urlParams };
 };
 
-exports.composeUploadJSON = (advertiser, campaign, creative, file) => ({
+exports.composeUploadJSON = (accountId, advertiser, campaign, creative, file) => ({
     protocolVersion: '0.8',
     createSessionRequest: {
         fields: [
@@ -326,7 +333,7 @@ exports.composeUploadJSON = (advertiser, campaign, creative, file) => ({
             {
                 inlined: {
                     name: 'ACCOUNT_ID',
-                    content: config.get('doubleclick.accountId'),
+                    content: accountId,
                     contentType: 'text/plain',
                 },
             },
@@ -377,7 +384,8 @@ exports.composeUploadJSON = (advertiser, campaign, creative, file) => ({
 });
 
 exports.uploadCreative = async (uploadJSON, sidCookie, file) => {
-    const uploadUrl = config.get('doubleclick.url') + 'upload/rupio';
+    const uploadConfig = await getJSON('./upload_config.json');
+    const uploadUrl = uploadConfig.doubleclick.url + 'upload/rupio';
 
     // first part, request upload_id
     const data = uploadJSON;

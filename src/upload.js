@@ -1,5 +1,5 @@
 const puppeteer = require('puppeteer');
-const config = require('config');
+// const config = require('config');
 const {
     restoreCookies, getCookie, getJSON, getFileData, writeUploadConfig,
 } = require('./utils.js');
@@ -11,6 +11,8 @@ const log = require('./utils.js').log();
 // TODO:        Maybe create some sort of prompt style menu to create initial upload_config.json. Or perhaps it's better to just create the uploadConfig from scratch.
 
 (async () => {
+    const uploadConfig = await getJSON('./upload_config.json');
+
     const browser = await puppeteer.launch({
         headless: true,
     });
@@ -20,14 +22,19 @@ const log = require('./utils.js').log();
     //     waitUntil: 'load',
     // });
 
+
+
     // inject previously saved cookies and validate timestamps
-    await restoreCookies(page, config.get('common.cookiesPath'));
-    const cookies = await page.cookies(config.get('doubleclick.url'));
+
+    await restoreCookies(page, uploadConfig.common.cookiesPath);
+    const cookies = await page.cookies(uploadConfig.doubleclick.url);
     const expiredCookies = cookies.filter((cookie) => cookie.expires < Math.floor(new Date() / 1000));
     log.info(expiredCookies.length === 0 ? 'Cookies checked, all good to go' : 'Some of the required cookies have expired, please log in again with \'npm run login\': ' + expiredCookies);
 
-    const uploadConfig = await getJSON(config.get('common.uploadConfigPath'));
-    const configIncomplete = true; // true when ID's are missing from uploadConfig. 
+    // const uploadConfig = await getJSON(config.get('common.uploadConfigPath'));
+
+
+    const configIncomplete = true; // true when ID's are missing from uploadConfig.
     // TODO:    validate upload config.
     //          validate the entries already there
     //          if ID's are already in there, that means the entities already exist, so can probably skip straight to upload
@@ -74,16 +81,15 @@ const log = require('./utils.js').log();
     // upload all creatives
     for (let q = 0; q < uploadConfig.campaigns.length; q += 1) {
         const batch = uploadConfig.campaigns[q];
-        log.info('starting upload of ' + batch.advertiser.name + ':' + batch.campaign.name + ' with ' + batch.creatives.length + ' creatives.');
+        log.debug('starting upload of ' + batch.advertiser.name + ':' + batch.campaign.name + ' with ' + batch.creatives.length + ' creatives.');
 
         // check if creative exists
         for (let i = 0; i < batch.creatives.length; i += 1) {
             const file = getFileData(batch.creatives[i].source);
             const [sidCookie] = getCookie(cookies, 'SID');
 
-            // log.info('uploading ' + file.name);
-
             const uploadJSON = composeUploadJSON(
+                uploadConfig.doubleclick.accountId,
                 batch.advertiser,
                 batch.campaign,
                 batch.creatives[i],
