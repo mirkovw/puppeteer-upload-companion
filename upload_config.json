@@ -2,10 +2,13 @@
   "campaigns": [
     {
       "advertiser": {
-        "name": "myrcat"
+        "name": "myrcat",
+        "id": "60091058",
+        "ownerId": "9759393"
       },
       "campaign": {
-        "name": "myrcat_march_madness"
+        "name": "myrcat_march_madness",
+        "id": "60227567"
       },
       "creatives": [
         {
@@ -13,21 +16,27 @@
           "source": "./files/dcu_test_300x250.zip",
           "width": "300",
           "height": "250",
-          "format": "INPAGE"
+          "format": "INPAGE",
+          "id": "61429025",
+          "entityId": "1011667444"
         },
         {
           "name": "myrcat_march_madness_300x600",
           "source": "./files/dcu_test_300x600.zip",
           "width": "300",
           "height": "600",
-          "format": "INPAGE"
+          "format": "INPAGE",
+          "id": "61429028",
+          "entityId": "1012529489"
         },
         {
           "name": "myrcat_march_madness_970x250",
           "source": "./files/dcu_test_970x250.zip",
           "width": "970",
           "height": "250",
-          "format": "INPAGE"
+          "format": "INPAGE",
+          "id": "61425160",
+          "entityId": "1013279376"
         }
       ]
     }

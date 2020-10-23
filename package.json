@@ -1,45 +1,34 @@
 {
-  "name": "dc-upload-prototype",
+  "name": "dc-upload",
   "version": "1.0.0",
-  "description": "Prototype DoubleClick Studio upload script using Puppeteer",
+  "description": "DoubleClick Studio upload script using Puppeteer",
   "main": "src/upload.js",
-  "nodemonConfig": {
-    "ignore": [
-      "SomeFile.txt",
-      "SomeDir"
-    ],
-    "verbose": true,
-    "execMap": {
-      "js": "npm run dev"
-    }
-  },
   "scripts": {
     "login": "node src/login.js",
     "upload": "node src/upload.js",
-    "uploadfile": "node src/upload_file.js",
     "lint": "eslint src"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mirkovw/puppeteer-test.git"
+    "url": "git+https://github.com/mirkovw/dc-upload.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/mirkovw/puppeteer-test/issues"
+    "url": "https://github.com/mirkovw/dc-upload/issues"
   },
-  "homepage": "https://github.com/mirkovw/puppeteer-test#readme",
+  "homepage": "https://github.com/mirkovw/dc-upload#readme",
   "dependencies": {
     "axios": "^0.19.2",
     "config": "^1.28.1",
-    "nodemon": "^2.0.2",
+    "nodemon": "^2.0.6",
     "prompt": "^1.0.0",
     "puppeteer": "^2.1.1",
-    "tracer": "^1.0.2"
+    "tracer": "^1.1.3"
   },
   "devDependencies": {
     "eslint": "^6.8.0",
-    "eslint-config-airbnb-base": "^14.0.0",
-    "eslint-plugin-import": "^2.20.1"
+    "eslint-config-airbnb-base": "^14.2.0",
+    "eslint-plugin-import": "^2.22.1"
   }
 }
