@@ -1,9 +1,6 @@
 const puppeteer = require('puppeteer');
-//const config = require('config');
 const { getJSON, writeCookies, restoreCookies } = require('./utils.js');
 const log = require('./utils.js').log();
-
-//const configMirko = require('./upload_config.json');
 
 (async () => {
     const uploadConfig = await getJSON('./upload_config.json');
@@ -44,7 +41,7 @@ const log = require('./utils.js').log();
 
     log.info("Successfully logged in. You can now run 'npm run upload'");
 
-    await writeCookies(page, uploadConfig.common.cookiesPath);
+    await writeCookies(page, uploadConfig.common.cookiesPath, uploadConfig);
 
     return browser.close();
 })();

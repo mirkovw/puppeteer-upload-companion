@@ -1,12 +1,22 @@
 const tracer = require('tracer');
 const fs = require('fs');
 const path = require('path');
-//const config = require('config');
 
 exports.log = () => tracer.colorConsole({ level: 'info' });
 
-exports.writeCookies = async (page, cookiesPath) => {
-    const dir = path.dirname(config.get('common.cookiesPath'));
+exports.getJSON = async (filePath) => {
+    try {
+        const buf = fs.readFileSync(filePath);
+        return JSON.parse(buf);
+    } catch (err) {
+        // log.info("restore cookie error", err);
+        return err;
+    }
+};
+
+exports.writeCookies = async (page, cookiesPath, uploadConfig) => {
+    // const uploadConfig = await getJSON('./upload_config.json');
+    const dir = path.dirname(uploadConfig.common.cookiesPath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir);
     const client = await page.target().createCDPSession();
     const { cookies } = await client.send('Network.getAllCookies');
@@ -25,15 +35,7 @@ exports.restoreCookies = async (page, cookiesPath) => {
 
 exports.getCookie = (cookies, cookieID) => cookies.filter((cookie) => cookie.name === cookieID);
 
-exports.getJSON = async (filePath) => {
-    try {
-        const buf = fs.readFileSync(filePath);
-        return JSON.parse(buf);
-    } catch (err) {
-        // log.info("restore cookie error", err);
-        return err;
-    }
-};
+
 
 exports.getUrlParams = (url) => {
     const theObj = {};

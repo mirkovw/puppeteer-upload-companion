@@ -1,5 +1,5 @@
 const puppeteer = require('puppeteer');
-// const config = require('config');
+
 const {
     restoreCookies, getCookie, getJSON, getFileData, writeUploadConfig,
 } = require('./utils.js');

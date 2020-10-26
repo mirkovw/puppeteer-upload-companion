@@ -1,4 +1,3 @@
-// const config = require('config');
 const axios = require('axios');
 const {
     getUrlParams, getJSON
