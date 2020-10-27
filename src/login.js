@@ -20,10 +20,7 @@ const log = require('./utils.js').log();
     });
 
     // load cookies if they're available
-    //await restoreCookies(page, config.get('common.cookiesPath'));
     await restoreCookies(page, uploadConfig.common.cookiesPath);
-
-
 
     await page.goto('https://accounts.google.com/');
     await navigationPromise;
@@ -41,7 +38,7 @@ const log = require('./utils.js').log();
 
     log.info("Successfully logged in. You can now run 'npm run upload'");
 
-    await writeCookies(page, uploadConfig.common.cookiesPath, uploadConfig);
+    await writeCookies(page, uploadConfig.common.cookiesPath);
 
     return browser.close();
 })();

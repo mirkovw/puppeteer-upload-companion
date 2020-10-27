@@ -1,8 +1,11 @@
 const tracer = require('tracer');
 const fs = require('fs');
 const path = require('path');
+const validate = require('jsonschema').validate;
 
 exports.log = () => tracer.colorConsole({ level: 'info' });
+
+
 
 exports.getJSON = async (filePath) => {
     try {
@@ -14,9 +17,8 @@ exports.getJSON = async (filePath) => {
     }
 };
 
-exports.writeCookies = async (page, cookiesPath, uploadConfig) => {
-    // const uploadConfig = await getJSON('./upload_config.json');
-    const dir = path.dirname(uploadConfig.common.cookiesPath);
+exports.writeCookies = async (page, cookiesPath) => {
+    const dir = path.dirname(cookiesPath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir);
     const client = await page.target().createCDPSession();
     const { cookies } = await client.send('Network.getAllCookies');
@@ -29,13 +31,11 @@ exports.restoreCookies = async (page, cookiesPath) => {
         const cookies = JSON.parse(buf);
         await page.setCookie(...cookies);
     } catch (err) {
-        // log.info("restore cookie error", err);
+        // log.error("restore cookie error", err);
     }
 };
 
 exports.getCookie = (cookies, cookieID) => cookies.filter((cookie) => cookie.name === cookieID);
-
-
 
 exports.getUrlParams = (url) => {
     const theObj = {};
@@ -53,9 +53,7 @@ exports.getUrlParams = (url) => {
 
 exports.writeUploadConfig = async (uploadObj) => {
     try {
-        //await fs.writeFileSync(config.get('common.uploadConfigPath'), JSON.stringify(uploadObj, null, 2));
         await fs.writeFileSync('./upload_config.json', JSON.stringify(uploadObj, null, 2));
-        // log.info('uploadConfig updated.');
         return true;
     } catch (err) {
         // log.error(err);
@@ -68,3 +66,124 @@ exports.getFileData = (filePath) => ({
     size: fs.statSync(filePath).size,
     data: fs.createReadStream(filePath),
 });
+
+
+exports.validateUploadConfig = (uploadConfig) => {
+    const mainSchema = {
+        "id": "/mainSchema",
+        "type": "object",
+        "required": true,
+        "properties": {
+            "common": {
+                "type": "object",
+                "required": true,
+                "properties": {
+                    "cookiesPath": {
+                        "type": "string",
+                        "required": true
+                    }
+                }
+            },
+            "doubleclick": {
+                "type": "object",
+                "required": true,
+                "properties": {
+                    "accountName": {
+                        "type": "string",
+                        "required": true
+                    },
+                    "accountId": {
+                        "type": "string",
+                        "required": true
+                    },
+                    "url": {
+                        "type": "string",
+                        "required": true
+                    }
+                }
+            },
+            "campaigns": {
+                "type": "array",
+                "required": true,
+                "items": {
+                    "type": "object",
+                    "required": true,
+                    "properties": {
+                        "advertiser": {
+                            "type": "object",
+                            "required": true,
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "required": true
+                                },
+                                "id": {
+                                    "type": "string",
+                                    "required": true
+                                },
+                                "ownerId": {
+                                    "type": "string",
+                                    "required": true
+                                },
+                            }
+                        },
+                        "campaign": {
+                            "type": "object",
+                            "required": true,
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "required": true
+                                },
+                                "id": {
+                                    "type": "string",
+                                    "required": true
+                                }
+                            }
+                        },
+                        "creatives": {
+                            "type": "array",
+                            "required": true,
+                            "items": {
+                                "type": "object",
+                                "required": true,
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "required": true
+                                    },
+                                    "source": {
+                                        "type": "string",
+                                        "required": true
+                                    },
+                                    "width": {
+                                        "type": "string",
+                                        "required": true
+                                    },
+                                    "height": {
+                                        "type": "string",
+                                        "required": true
+                                    },
+                                    "format": {
+                                        "type": "string",
+                                        "required": true
+                                    },
+                                    "id": {
+                                        "type": "string",
+                                        "required": true
+                                    },
+                                    "entityId": {
+                                        "type": "string",
+                                        "required": true
+                                    },
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    return validate(uploadConfig, mainSchema);
+}

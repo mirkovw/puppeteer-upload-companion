@@ -1,14 +1,10 @@
 const puppeteer = require('puppeteer');
-
-const {
-    restoreCookies, getCookie, getJSON, getFileData, writeUploadConfig,
-} = require('./utils.js');
-const {
-    getAdvertiser, getCampaign, getCreative, createAdvertiser, createCampaign, createCreative, uploadCreative, composeUploadJSON,
-} = require('./doubleclick.js');
+const { restoreCookies, getCookie, getJSON, getFileData, writeUploadConfig, validateUploadConfig } = require('./utils.js');
+const { getAdvertiser, getCampaign, getCreative, createAdvertiser, createCampaign, createCreative, uploadCreative, composeUploadJSON } = require('./doubleclick.js');
 const log = require('./utils.js').log();
 
-// TODO:        Maybe create some sort of prompt style menu to create initial upload_config.json. Or perhaps it's better to just create the uploadConfig from scratch.
+
+// TODO: Maybe create some sort of prompt style menu to create initial upload_config.json. Or perhaps it's better to just create the uploadConfig from scratch.
 
 (async () => {
     const uploadConfig = await getJSON('./upload_config.json');
@@ -18,11 +14,6 @@ const log = require('./utils.js').log();
     });
 
     const page = await browser.newPage();
-    // const navigationPromise = page.waitForNavigation({
-    //     waitUntil: 'load',
-    // });
-
-
 
     // inject previously saved cookies and validate timestamps
 
@@ -31,31 +22,29 @@ const log = require('./utils.js').log();
     const expiredCookies = cookies.filter((cookie) => cookie.expires < Math.floor(new Date() / 1000));
     log.info(expiredCookies.length === 0 ? 'Cookies checked, all good to go' : 'Some of the required cookies have expired, please log in again with \'npm run login\': ' + expiredCookies);
 
-    // const uploadConfig = await getJSON(config.get('common.uploadConfigPath'));
+    // Validate uploadConfig file. Make sure all ID's are in there
+    log.info("Validating upload config file");
+    const validateResult = validateUploadConfig(uploadConfig);
 
-
-    const configIncomplete = true; // true when ID's are missing from uploadConfig.
-    // TODO:    validate upload config.
-    //          validate the entries already there
-    //          if ID's are already in there, that means the entities already exist, so can probably skip straight to upload
-    //          set configIncomplete based on whether ID's are missing or not
-
-    // get ID's (advertiserId, campaignId, creativeId, etc), or create new entities, for all entities and save these to uploadConfig for future reference
     /* eslint-disable no-await-in-loop */
     // because why not?
 
-    if (configIncomplete) {
+    if (!validateResult.valid) {
+        log.debug(validateResult.errors);
+        log.info("Some ID's are missing, retrieving them now");
+
+        // get ID's (advertiserId, campaignId, creativeId, etc), or create new entities, for all entities and save these to uploadConfig for future reference
         for (let q = 0; q < uploadConfig.campaigns.length; q += 1) {
             const data = uploadConfig.campaigns[q];
 
             // check if advertiser exists
-            let advertiser = await getAdvertiser(page, data.advertiser.name);
-            if (!advertiser.exists) advertiser = await createAdvertiser(browser, page, data.advertiser.name);
+            let advertiser = await getAdvertiser(page, uploadConfig, data.advertiser.name);
+            if (!advertiser.exists) advertiser = await createAdvertiser(browser, page, uploadConfig, data.advertiser.name);
             log.info(advertiser);
 
             // check if campaign exists
             let campaign = await getCampaign(page, advertiser, data.campaign.name);
-            if (!campaign.exists) campaign = await createCampaign(browser, page, advertiser, data.campaign.name);
+            if (!campaign.exists) campaign = await createCampaign(browser, page, uploadConfig, advertiser, data.campaign.name);
             log.info(campaign);
 
             // write new values
@@ -67,7 +56,7 @@ const log = require('./utils.js').log();
             // check if creative exists
             for (let i = 0; i < data.creatives.length; i += 1) {
                 let creative = await getCreative(page, campaign, data.creatives[i].name);
-                if (!creative.exists) creative = await createCreative(browser, page, advertiser, campaign, data.creatives[i]);
+                if (!creative.exists) creative = await createCreative(browser, page, uploadConfig, advertiser, campaign, data.creatives[i]);
                 log.info(creative);
 
                 // write new values
@@ -76,6 +65,10 @@ const log = require('./utils.js').log();
                 await writeUploadConfig(uploadConfig);
             }
         }
+    }
+
+    else {
+        log.info("Uploadconfig validated");
     }
 
     // upload all creatives
@@ -96,9 +89,10 @@ const log = require('./utils.js').log();
                 file,
             );
 
-            await uploadCreative(uploadJSON, sidCookie, file);
+            await uploadCreative(uploadConfig, uploadJSON, sidCookie, file);
         }
     }
 
     await browser.close();
+
 })();

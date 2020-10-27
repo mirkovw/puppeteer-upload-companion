@@ -1,8 +1,7 @@
 const axios = require('axios');
-const {
-    getUrlParams, getJSON
-} = require('./utils.js');
+const { getUrlParams, getJSON } = require('./utils.js');
 const log = require('./utils.js').log();
+
 
 const waitMs = 1000; // TODO:  Optimize speeds. Figure out where we don't need 1000ms wait time because it adds up
 
@@ -85,8 +84,7 @@ const searchForEntity = async (page, searchQuery) => {
 };
 
 
-exports.getAdvertiser = async (page, advertiserName) => {
-    const uploadConfig = await getJSON('./upload_config.json');
+exports.getAdvertiser = async (page, uploadConfig, advertiserName) => {
     const advertisersPageUrl = uploadConfig.doubleclick.url + '#advertisers:';
     // check if advertiser exists
     log.info('checking if advertiser exists: ' + advertiserName);
@@ -96,11 +94,8 @@ exports.getAdvertiser = async (page, advertiserName) => {
     return searchForEntity(page, advertiserName);
 };
 
-exports.createAdvertiser = async (browser, page, advertiserName) => {
-    const uploadConfig = await getJSON('./upload_config.json');
-    //const createAdvertiserUrl = config.get('doubleclick.url') + '#advertiser/new:accountId=' + config.get('doubleclick.accountId') + '&accountName=' + config.get('doubleclick.accountName');
+exports.createAdvertiser = async (browser, page, uploadConfig, advertiserName) => {
     const createAdvertiserUrl = uploadConfig.doubleclick.url + '#advertiser/new:accountId=' + uploadConfig.doubleclick.accountId + '&accountName=' + uploadConfig.doubleclick.accountName;
-
 
     const qsAdvertiserInput = 'input#gwt-debug-advertiser-advertiserName-input';
     const qsAdvertiserSubmit = 'a#gwt-debug-save-button';
@@ -162,8 +157,7 @@ exports.getCampaign = async (page, advertiser, campaignName) => {
     return searchForEntity(page, campaignName);
 };
 
-exports.createCampaign = async (browser, page, advertiser, campaignName) => {
-    const uploadConfig = await getJSON('./upload_config.json');
+exports.createCampaign = async (browser, page, uploadConfig, advertiser, campaignName) => {
     const createCampaignUrl = uploadConfig. doubleclick.url + '#campaign/new:advertiserId=' + advertiser.urlParams.advertiserId;
     const qsCampaignInput = 'input#gwt-debug-new-campaign-campaignText';
     const qsCampaignSubmit = 'a#gwt-debug-save-button';
@@ -210,8 +204,7 @@ exports.getCreative = async (page, campaign, creativeName) => {
     return searchForEntity(page, creativeName);
 };
 
-exports.createCreative = async (browser, page, advertiser, campaign, creative) => {
-    const uploadConfig = await getJSON('./upload_config.json');
+exports.createCreative = async (browser, page, uploadConfig, advertiser, campaign, creative) => {
     const createCreativeUrl = uploadConfig.doubleclick.url + '#creative/new:campaignId=' + campaign.urlParams.campaignId + '&advertiserId=' + advertiser.urlParams.advertiserId;
     const qsCreativeNameInput = 'input#gwt-debug-creativeDetail-nameText';
     const qsCreativeFormatDropdown = 'div#gwt-debug-creativeDetail-formatText';
@@ -382,8 +375,8 @@ exports.composeUploadJSON = (accountId, advertiser, campaign, creative, file) =>
     },
 });
 
-exports.uploadCreative = async (uploadJSON, sidCookie, file) => {
-    const uploadConfig = await getJSON('./upload_config.json');
+exports.uploadCreative = async (uploadConfig, uploadJSON, sidCookie, file) => {
+    //const uploadConfig = await getJSON('./upload_config.json');
     const uploadUrl = uploadConfig.doubleclick.url + 'upload/rupio';
 
     // first part, request upload_id
@@ -399,8 +392,6 @@ exports.uploadCreative = async (uploadJSON, sidCookie, file) => {
     log.info('uploading ' + file.name + ', status: ' + rupioResultUploadId.data.sessionStatus.state);
 
     // now second part, upload file
-    // config.get('doubleclick.uploadUrl');
-
     const reqUploadFileUrl = uploadUrl + '?upload_id=' + uploadId + '&file_id=000';
     const headers = {
         Cookie: sidCookie.name + '=' + sidCookie.value,
