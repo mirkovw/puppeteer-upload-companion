@@ -1,6 +1,6 @@
 {
   "name": "dc-upload",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "DoubleClick Studio upload script using Puppeteer",
   "main": "src/upload.js",
   "scripts": {
