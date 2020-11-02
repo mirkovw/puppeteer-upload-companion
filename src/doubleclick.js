@@ -32,6 +32,10 @@ exports.getCreative = async (page, campaign, creativeName) => {
     return searchForEntity(page, creativeName);
 };
 
+
+
+
+
 exports.createAdvertiser = async (browser, page, uploadConfig, advertiserName) => {
     const createAdvertiserUrl = uploadConfig.doubleclick.url + '#advertiser/new:accountId=' + uploadConfig.doubleclick.accountId + '&accountName=' + uploadConfig.doubleclick.accountName;
     //const advertiserUrl = 'https://www.google.com/doubleclick/studio/#Advertiser:';
@@ -71,6 +75,14 @@ exports.createAdvertiser = async (browser, page, uploadConfig, advertiserName) =
     const urlParams = await getUrlParams(page.url());
 
     return { exists: true, url: page.url(), urlParams };
+};
+
+exports.getPreviewUrl = async (page, uploadConfig) => {
+    const campaignUrl = uploadConfig.doubleclick.url + '#campaign:advertiserId=' +  uploadConfig.campaigns[0].advertiser.id + '&campaignId=' + uploadConfig.campaigns[0].campaign.id;
+    await page.goto(campaignUrl);
+    const previewLinkSel = 'a#external-preview-table-anchor-default';
+    await page.waitForSelector(previewLinkSel);
+    return await page.$eval(previewLinkSel, e => e.getAttribute('href'));
 };
 
 exports.createCampaign = async (browser, page, uploadConfig, advertiser, campaignName) => {

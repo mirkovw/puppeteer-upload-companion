@@ -1,6 +1,6 @@
 const puppeteer = require('puppeteer');
 const { restoreCookies, getCookie, getJSON, getFileData, writeUploadConfig, validateUploadConfig } = require('./utils.js');
-const { getAdvertiser, getCampaign, getCreative, createAdvertiser, createCampaign, createCreative, uploadCreative, composeUploadJSON } = require('./doubleclick.js');
+const { getAdvertiser, getCampaign, getCreative, createAdvertiser, createCampaign, createCreative, uploadCreative, composeUploadJSON, getPreviewUrl } = require('./doubleclick.js');
 const log = require('./utils.js').log();
 
 
@@ -10,7 +10,7 @@ const log = require('./utils.js').log();
     const uploadConfig = await getJSON('./upload_config.json');
 
     const browser = await puppeteer.launch({
-        headless: true,
+        headless: false,
     });
 
     const page = await browser.newPage();
@@ -66,11 +66,15 @@ const log = require('./utils.js').log();
                 log.info("campaign " + data.campaign.name + " created with ID: "  + campaign.urlParams.campaignId)
             }
 
+            //const previewUrl = await(getPreviewUrl);
+
             // write new values
             uploadConfig.campaigns[q].advertiser.id = advertiser.urlParams.advertiserId;
             uploadConfig.campaigns[q].advertiser.ownerId = advertiser.urlParams.ownerId;
             uploadConfig.campaigns[q].campaign.id = campaign.urlParams.campaignId;
             await writeUploadConfig(uploadConfig);
+
+
 
             // check if creative exists
             for (let i = 0; i < data.creatives.length; i += 1) {
@@ -98,6 +102,7 @@ const log = require('./utils.js').log();
 
     else {
         log.info("upload config validated");
+
     }
 
     // upload all creatives
@@ -119,7 +124,7 @@ const log = require('./utils.js').log();
                 file,
             );
 
-            log.info("uploading " + file.name)
+            log.info("uploading " + file.name + " to doubleclick studio")
 
             const upload = await uploadCreative(uploadConfig, uploadJSON, sidCookie, file);
 
@@ -136,7 +141,13 @@ const log = require('./utils.js').log();
             }
 
         }
+
+        log.info("getting preview URL")
+        const previewUrl = await getPreviewUrl(page, uploadConfig);
+        log.info("preview url is.. " + previewUrl);
     }
+
+
 
     await browser.close();
 
