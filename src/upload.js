@@ -10,7 +10,7 @@ const log = require('./utils.js').log();
     const uploadConfig = await getJSON('./upload_config.json');
 
     const browser = await puppeteer.launch({
-        headless: false,
+        headless: true,
     });
 
     const page = await browser.newPage();
